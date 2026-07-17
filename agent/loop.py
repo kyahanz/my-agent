@@ -1,15 +1,17 @@
-import httpx
+import os
 import json
+from groq import Groq
+from dotenv import load_dotenv
 from tools.file_tool import read_file, write_file, list_files
 from tools.bash_tool import run_bash
 from memory.long_term import save_message
-import os
-from dotenv import load_dotenv
 
 load_dotenv()
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
-MODEL = os.getenv("MODEL", "qwen2.5-coder:3b")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+MODEL = os.getenv("MODEL", "llama-3.3-70b-versatile")
+
+client = Groq(api_key=GROQ_API_KEY)
 
 conversation_history = []
 
@@ -76,21 +78,16 @@ def chat(user_message: str) -> str:
     save_message("user", user_message)
 
     while True:
-        response = httpx.post(
-            OLLAMA_URL,
-            json={
-                "model": MODEL,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    *conversation_history
-                ],
-                "stream": False
-            },
-            timeout=300
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                *conversation_history
+            ],
+            max_tokens=1024
         )
 
-        data = response.json()
-        assistant_message = data["message"]["content"]
+        assistant_message = response.choices[0].message.content
         tool_call = parse_tool_call(assistant_message)
 
         if tool_call:
