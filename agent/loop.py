@@ -66,6 +66,8 @@ Tools tersedia:
 def parse_tool_call(response: str):
     try:
         response = response.strip()
+        
+        # Hapus backtick kalau ada
         if "```" in response:
             lines = response.split("\n")
             cleaned = []
@@ -75,14 +77,18 @@ def parse_tool_call(response: str):
                 cleaned.append(line)
             response = "\n".join(cleaned).strip()
 
-        if response.startswith("{"):
-            data = json.loads(response)
+        # Cari JSON di dalam teks (kalau ada teks sebelum JSON)
+        if "{" in response:
+            start = response.index("{")
+            end = response.rindex("}") + 1
+            json_str = response[start:end]
+            data = json.loads(json_str)
             if "tool" in data and "params" in data:
                 return data
+                
     except:
         pass
     return None
-
 
 def execute_tool(tool_name: str, params: dict) -> str:
     print(f"🔧 Menjalankan tool: {tool_name} dengan params: {params}")
